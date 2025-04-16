@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Potential KB Home Project</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; width: 100vw; }
+    .logo {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 6px;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+    .footer {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      background: rgba(255,255,255,0.8);
+      padding: 4px 0;
+      z-index: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="logo">
+  <img src="assets/images/KB_Home_logo.png" alt="KB Home" width="120">
+</div>
+<div class="footer">Map Prepared By Florida Land Design & Permitting</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+
+// Initialize map
+const map = L.map('map').setView([27.9, -82.4], 11);
+
+// Basemaps
+const esriAerial = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles © Esri' }
+).addTo(map);
+
+const openStreet = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '© OpenStreetMap contributors' }
+);
+
+const baseMaps = {
+  "Aerial": esriAerial,
+  "Streets": openStreet
+};
+
+// Overlay Layers
+const overlayLayers = {};
+
+const layerFiles = {
+  "Project Area": "data/Project.geojson",
+  "Wetlands": "data/Wetlands.geojson",
+  "Floodplain": "data/Floodplain.geojson",
+  "Future Land Use": "data/FutureLandUse.geojson",
+  "Schools": "data/Schools.geojson",
+  "Urban Service Area": "data/UrbanServiceArea.geojson",
+  "Urban Service Area Expansion": "data/UrbanServiceAreaExpansion.geojson",
+  "Walmart": "data/Walmart.geojson"
+};
+
+const colors = {
+  "Project Area": "#FF6600",
+  "Wetlands": "#66CCFF",
+  "Floodplain": "#9999FF",
+  "Future Land Use": "#CC99CC",
+  "Schools": "#00CC66",
+  "Urban Service Area": "#666666",
+  "Urban Service Area Expansion": "#999966",
+  "Walmart": "#FF0000"
+};
+
+for (const [name, path] of Object.entries(layerFiles)) {
+  fetch(path)
+    .then(res => res.json())
+    .then(data => {
+      const style = {
+        color: colors[name] || '#3388ff',
+        weight: 2,
+        fillOpacity: 0.4
+      };
+      const layer = L.geoJSON(data, {
+        style,
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: colors[name],
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          });
+        },
+        onEachFeature: (feature, layer) => {
+          if (feature.properties) {
+            let popup = `<strong>${name}</strong><br>`;
+            for (const key in feature.properties) {
+              popup += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+            }
+            layer.bindPopup(popup);
+          }
+        }
+      });
+
+      overlayLayers[name] = layer;
+      if (name === "Project Area") {
+        layer.addTo(map);  // Show only Project Area by default
+      }
+    });
+}
+
+L.control.layers(baseMaps, overlayLayers, { collapsed: false }).addTo(map);
+
+</script>
+
+</body>
+</html>
