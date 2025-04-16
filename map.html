@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Potential KB Home Project</title>
+  <title>Potential Development Project</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #map { height: 100vh; width: 100vw; }
     .logo {
       position: absolute;
-      top: 10px;
+      bottom: 40px;
       right: 10px;
       background: white;
       padding: 6px;
@@ -27,11 +27,24 @@
       padding: 4px 0;
       z-index: 500;
     }
+    .map-title {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      background: rgba(255,255,255,0.9);
+      padding: 6px 12px;
+      border-radius: 4px;
+      z-index: 1000;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
 <div id="map"></div>
+<div class="map-title">Potential Development Project</div>
 <div class="logo">
   <img src="assets/images/KB_Home_logo.png" alt="KB Home" width="120">
 </div>
@@ -40,8 +53,12 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 
+function colorLabel(name, color) {
+  return `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:6px;border:1px solid #000;"></span>${name}`;
+}
+
 // Initialize map
-const map = L.map('map').setView([27.9, -82.4], 11);
+const map = L.map('map').setView([27.7144, -82.2882], 17);
 
 // Basemaps
 const esriAerial = L.tileLayer(
@@ -61,7 +78,6 @@ const baseMaps = {
 
 // Overlay Layers
 const overlayLayers = {};
-
 const layerFiles = {
   "Project Area": "data/Project.geojson",
   "Wetlands": "data/Wetlands.geojson",
@@ -72,17 +88,19 @@ const layerFiles = {
   "Urban Service Area Expansion": "data/UrbanServiceAreaExpansion.geojson",
   "Walmart": "data/Walmart.geojson"
 };
-
 const colors = {
   "Project Area": "#FF6600",
   "Wetlands": "#66CCFF",
   "Floodplain": "#9999FF",
   "Future Land Use": "#CC99CC",
-  "Schools": "#00CC66",
-  "Urban Service Area": "#666666",
-  "Urban Service Area Expansion": "#999966",
-  "Walmart": "#FF0000"
+  "Schools": "#FF0000",
+  "Urban Service Area": "#FFCC00", // bright yellow
+  "Urban Service Area Expansion": "#00FFFF", // bright cyan
+  "Walmart": "#0000FF"
 };
+
+let layersLoaded = 0;
+const totalLayers = Object.keys(layerFiles).length;
 
 for (const [name, path] of Object.entries(layerFiles)) {
   fetch(path)
@@ -91,18 +109,27 @@ for (const [name, path] of Object.entries(layerFiles)) {
       const style = {
         color: colors[name] || '#3388ff',
         weight: 2,
-        fillOpacity: 0.4
+        fillOpacity: name === "Project Area" ? 0 : 0.4,
+        fillColor: name === "Project Area" ? 'transparent' : colors[name]
       };
       const layer = L.geoJSON(data, {
         style,
         pointToLayer: (feature, latlng) => {
+          let radius = 6;
+          let fillOpacity = 0.8;
+
+          if (name === "Schools" || name === "Walmart") {
+            radius = 10;
+            fillOpacity = 1.0; // solid fill for Schools and Walmart
+          }
+
           return L.circleMarker(latlng, {
-            radius: 6,
+            radius: radius,
             fillColor: colors[name],
             color: "#000",
             weight: 1,
             opacity: 1,
-            fillOpacity: 0.8
+            fillOpacity: fillOpacity
           });
         },
         onEachFeature: (feature, layer) => {
@@ -116,14 +143,17 @@ for (const [name, path] of Object.entries(layerFiles)) {
         }
       });
 
-      overlayLayers[name] = layer;
+      overlayLayers[colorLabel(name, colors[name])] = layer;
       if (name === "Project Area") {
-        layer.addTo(map);  // Show only Project Area by default
+        layer.addTo(map);
+      }
+
+      layersLoaded++;
+      if (layersLoaded === totalLayers) {
+        L.control.layers(baseMaps, overlayLayers, { collapsed: false }).addTo(map);
       }
     });
 }
-
-L.control.layers(baseMaps, overlayLayers, { collapsed: false }).addTo(map);
 
 </script>
 
