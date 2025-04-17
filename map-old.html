@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Potential Development Project</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.extra-markers/dist/leaflet.extra-markers.min.css" />
+  <script src="https://unpkg.com/leaflet.extra-markers/dist/leaflet.extra-markers.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://unpkg.com/leaflet-sidebar-v2/css/leaflet-sidebar.min.css');
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; width: 100vw; }
+    .logo {
+      position: absolute;
+      bottom: 40px;
+      right: 10px;
+      background: white;
+      padding: 6px;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+    .footer {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      background: rgba(255,255,255,0.8);
+      padding: 4px 0;
+      z-index: 500;
+    }
+    .map-title {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      background: rgba(255,255,255,0.9);
+      padding: 6px 12px;
+      border-radius: 4px;
+      z-index: 1000;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="sidebar" class="leaflet-sidebar collapsed">
+  <div class="leaflet-sidebar-tabs">
+    <ul role="tablist">
+      <li><a href="#home" role="tab"><i class="fa fa-bars"></i></a></li>
+    </ul>
+  </div>
+  <div class="leaflet-sidebar-content">
+    <div class="leaflet-sidebar-pane" id="home">
+      <h1 class="leaflet-sidebar-header">Project Info<span class="leaflet-sidebar-close"><i class="fa fa-times"></i></span></h1>
+      <p>This interactive map presents a potential development site analyzed by FLD&P. Use the controls to explore parcels, constraints, services, and other context layers relevant to KB Home’s interests.</p>
+    </div>
+  </div>
+</div>
+<div class="map-title">Potential Development Project</div>
+<div class="logo">
+  <img src="assets/images/KB_Home_logo.png" alt="KB Home" width="120">
+</div>
+<div class="footer">Map Prepared By Florida Land Design & Permitting</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-sidebar-v2/js/leaflet-sidebar.min.js"></script>
+<script>
+
+function colorLabel(name, color) {
+  return `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:6px;border:1px solid #000;"></span>${name}`;
+}
+
+// Initialize map
+const map = L.map('map').setView([27.7144, -82.2882], 15);
+const sidebar = L.control.sidebar({
+  container: 'sidebar',
+  position: 'left'
+}).addTo(map);
+
+// Basemaps
+const esriAerial = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles © Esri' }
+).addTo(map);
+
+const openStreet = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution: '© OpenStreetMap contributors' }
+);
+
+const cartoLight = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  { attribution: '&copy; <a href="https://carto.com/">CARTO</a>' }
+);
+
+const baseMaps = {
+  "Aerial": esriAerial,
+  "Streets": openStreet,
+  "Carto Light": cartoLight
+};
+
+// Overlay Layers
+const overlayLayers = {};
+const layerFiles = {
+  "Project Area": "data/Project.geojson",
+  "Wetlands": "data/Wetlands.geojson",
+  "Floodplain": "data/Floodplain.geojson",
+  "Future Land Use": "data/FutureLandUse.geojson",
+  "Schools": "data/Schools.geojson",
+  "Urban Service Area": "data/UrbanServiceArea.geojson",
+  "Urban Service Area Expansion": "data/UrbanServiceAreaExpansion.geojson",
+  "Walmart": "data/Walmart.geojson"
+};
+const colors = {
+  "Project Area": "#FF6600",
+  "Wetlands": "#66CCFF",
+  "Floodplain": "#9999FF",
+  "Future Land Use": "#CC99CC",
+  "Schools": "#FF0000",
+  "Urban Service Area": "#FFCC00", // bright yellow
+  "Urban Service Area Expansion": "#00FFFF", // bright cyan
+  "Walmart": "#0000FF"
+};
+
+const layersControl = L.control.layers(baseMaps, {}, { collapsed: false }).addTo(map);
+
+for (const [name, path] of Object.entries(layerFiles)) {
+  fetch(path)
+    .then(res => res.json())
+    .then(data => {
+      const style = {
+        color: colors[name] || '#3388ff',
+        weight: 2,
+        fillOpacity: name === "Project Area" ? 0 : 0.4,
+        fillColor: name === "Project Area" ? 'transparent' : colors[name]
+      };
+      const layer = L.geoJSON(data, {
+        style,
+        pointToLayer: (feature, latlng) => {
+          if (name === "Schools") {
+            return L.marker(latlng, {
+              icon: L.ExtraMarkers.icon({
+                icon: 'fa-school',
+                markerColor: 'red',
+                shape: 'star',
+                prefix: 'fa'
+              })
+            });
+          }
+          if (name === "Walmart") {
+            return L.marker(latlng, {
+              icon: L.ExtraMarkers.icon({
+                icon: 'fa-shopping-cart',
+                markerColor: 'blue',
+                shape: 'circle',
+                prefix: 'fa'
+              })
+            });
+          }
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: colors[name],
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          });
+        },
+        onEachFeature: (feature, layer) => {
+          if (feature.properties) {
+            let popup = `<strong>${name}</strong><br>`;
+            for (const key in feature.properties) {
+              popup += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+            }
+            layer.bindPopup(popup);
+            layer.on('click', function () {
+              if (layer.getBounds) {
+                const bounds = layer.getBounds();
+                if (bounds.isValid()) {
+                  map.flyTo(bounds.getCenter(), 16);
+                }
+              }
+            });
+          }
+        }
+      });
+
+      const labeledName = colorLabel(name, colors[name]);
+      overlayLayers[labeledName] = layer;
+      layersControl.addOverlay(layer, labeledName);
+      if (name === "Project Area") {
+        layer.addTo(map);
+      }
+
+      layersLoaded++;
+      if (layersLoaded === totalLayers) {
+        L.control.layers(baseMaps, overlayLayers, { collapsed: false }).addTo(map);
+      }
+    });
+}
+
+</script>
+
+</body>
+</html>

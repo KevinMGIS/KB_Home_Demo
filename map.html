@@ -2,160 +2,201 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Potential Development Project</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; }
-    #map { height: 100vh; width: 100vw; }
-    .logo {
-      position: absolute;
-      bottom: 40px;
-      right: 10px;
-      background: white;
-      padding: 6px;
-      border-radius: 4px;
-      z-index: 1000;
-    }
-    .footer {
-      position: absolute;
-      bottom: 10px;
-      width: 100%;
-      text-align: center;
-      font-size: 14px;
-      background: rgba(255,255,255,0.8);
-      padding: 4px 0;
-      z-index: 500;
-    }
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
     .map-title {
       position: absolute;
-      top: 10px;
+      top: 15px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 20px;
-      background: rgba(255,255,255,0.9);
-      padding: 6px 12px;
-      border-radius: 4px;
-      z-index: 1000;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      padding: 8px 16px;
+      font-size: 18px;
       font-weight: bold;
+      border-radius: 4px;
+      z-index: 1;
+    }
+    .sidebar {
+      position: absolute;
+      left: 10px;
+      top: 60px;
+      width: 250px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      z-index: 2;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+      line-height: 1.4em;
+    }
+    #legend-panel {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      border-radius: 4px;
+      font-size: 14px;
+      z-index: 2;
+      width: 230px;
+    }
+    #legend-toggle {
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      background: #2c2c2c;
+    }
+    #legend-content {
+      display: none;
+      padding: 10px;
+    }
+    #legend-panel.open #legend-content {
+      display: block;
     }
   </style>
 </head>
 <body>
+  <div id="map"></div>
+  <div id="legend-panel">
+    <div id="legend-toggle">☰ Layers</div>
+    <div id="legend-content"></div>
+  </div>
+  <div class="map-title">Potential Development Project</div>
+  <div class="sidebar">
+    <h3>Project Info</h3>
+    <p>This interactive map presents a potential development site analyzed by FLD&amp;P.</p>
+    <p><strong>Total Acres:</strong> 130.31</p>
+    <p><strong>Approximate Wetlands:</strong> 10.9</p>
+    <p><strong>Future Land Use:</strong> Wimauma Village Residential-2 (.25 FAR)</p>
+    <div style="margin-top: 20px;">
+      <strong>Prepared for</strong><br>
+      <img src="assets/images/KB_Home_Logo.png" alt="KB Home Logo" style="margin-top: 6px; width: 120px;">
+    </div>
+  </div>
 
-<div id="map"></div>
-<div class="map-title">Potential Development Project</div>
-<div class="logo">
-  <img src="assets/images/KB_Home_logo.png" alt="KB Home" width="120">
-</div>
-<div class="footer">Map Prepared By Florida Land Design & Permitting</div>
+  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script>
+    let map;
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-
-function colorLabel(name, color) {
-  return `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:6px;border:1px solid #000;"></span>${name}`;
-}
-
-// Initialize map
-const map = L.map('map').setView([27.7144, -82.2882], 17);
-
-// Basemaps
-const esriAerial = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: 'Tiles © Esri' }
-).addTo(map);
-
-const openStreet = L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { attribution: '© OpenStreetMap contributors' }
-);
-
-const baseMaps = {
-  "Aerial": esriAerial,
-  "Streets": openStreet
-};
-
-// Overlay Layers
-const overlayLayers = {};
-const layerFiles = {
-  "Project Area": "data/Project.geojson",
-  "Wetlands": "data/Wetlands.geojson",
-  "Floodplain": "data/Floodplain.geojson",
-  "Future Land Use": "data/FutureLandUse.geojson",
-  "Schools": "data/Schools.geojson",
-  "Urban Service Area": "data/UrbanServiceArea.geojson",
-  "Urban Service Area Expansion": "data/UrbanServiceAreaExpansion.geojson",
-  "Walmart": "data/Walmart.geojson"
-};
-const colors = {
-  "Project Area": "#FF6600",
-  "Wetlands": "#66CCFF",
-  "Floodplain": "#9999FF",
-  "Future Land Use": "#CC99CC",
-  "Schools": "#FF0000",
-  "Urban Service Area": "#FFCC00", // bright yellow
-  "Urban Service Area Expansion": "#00FFFF", // bright cyan
-  "Walmart": "#0000FF"
-};
-
-let layersLoaded = 0;
-const totalLayers = Object.keys(layerFiles).length;
-
-for (const [name, path] of Object.entries(layerFiles)) {
-  fetch(path)
-    .then(res => res.json())
-    .then(data => {
-      const style = {
-        color: colors[name] || '#3388ff',
-        weight: 2,
-        fillOpacity: name === "Project Area" ? 0 : 0.4,
-        fillColor: name === "Project Area" ? 'transparent' : colors[name]
-      };
-      const layer = L.geoJSON(data, {
-        style,
-        pointToLayer: (feature, latlng) => {
-          let radius = 6;
-          let fillOpacity = 0.8;
-
-          if (name === "Schools" || name === "Walmart") {
-            radius = 10;
-            fillOpacity = 1.0; // solid fill for Schools and Walmart
+    map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          esri: {
+            type: 'raster',
+            tiles: ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256
           }
-
-          return L.circleMarker(latlng, {
-            radius: radius,
-            fillColor: colors[name],
-            color: "#000",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: fillOpacity
-          });
         },
-        onEachFeature: (feature, layer) => {
-          if (feature.properties) {
-            let popup = `<strong>${name}</strong><br>`;
-            for (const key in feature.properties) {
-              popup += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
-            }
-            layer.bindPopup(popup);
-          }
-        }
-      });
-
-      overlayLayers[colorLabel(name, colors[name])] = layer;
-      if (name === "Project Area") {
-        layer.addTo(map);
-      }
-
-      layersLoaded++;
-      if (layersLoaded === totalLayers) {
-        L.control.layers(baseMaps, overlayLayers, { collapsed: false }).addTo(map);
-      }
+        layers: [{
+          id: 'esri-basemap',
+          type: 'raster',
+          source: 'esri'
+        }]
+      },
+      center: [-82.2882, 27.7144],
+      zoom: 15
     });
-}
 
-</script>
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    document.getElementById('legend-toggle').onclick = () => {
+      document.getElementById('legend-panel').classList.toggle('open');
+    };
 
+
+    map.on('load', attachMapLogic);
+
+    function attachMapLogic() {
+      const layers = [
+        { id: 'Project', file: 'data/Project.geojson', color: '#FF6600', visible: true },
+        { id: 'Wetlands', file: 'data/Wetlands.geojson', color: '#66CCFF', visible: false },
+        { id: 'Floodplain', file: 'data/Floodplain.geojson', color: '#9999FF', visible: false },
+        { id: 'FutureLandUse', file: 'data/FutureLandUse.geojson', color: '#CC99CC', visible: false },
+        { id: 'Schools', file: 'data/Schools.geojson', color: '#FF0000', visible: false },
+        { id: 'UrbanServiceArea', file: 'data/UrbanServiceArea.geojson', color: '#FFCC00', visible: false },
+        { id: 'UrbanServiceAreaExpansion', file: 'data/UrbanServiceAreaExpansion.geojson', color: '#00FFFF', visible: false },
+        { id: 'Walmart', file: 'data/Walmart.geojson', color: '#0000FF', visible: false }
+      ];
+
+      layers.forEach(layer => {
+        fetch(layer.file)
+          .then(res => res.json())
+          .then(data => {
+            map.addSource(layer.id, { type: 'geojson', data });
+
+            const isPoint = data.features.length && data.features[0].geometry.type === 'Point';
+            const layerConfig = {
+              id: layer.id,
+              type: isPoint ? 'circle' : (layer.id === 'Project' ? 'line' : 'fill'),
+              source: layer.id,
+              layout: { visibility: layer.visible ? 'visible' : 'none' },
+              paint: isPoint
+                ? { 'circle-radius': 6, 'circle-color': layer.color }
+                : (layer.id === 'Project'
+                  ? { 'line-color': '#FF0000', 'line-width': 2 }
+                  : {
+                      'fill-color': layer.color,
+                      'fill-opacity': 0.5,
+                      'fill-outline-color': '#333'
+                    })
+            };
+
+            map.addLayer(layerConfig);
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `legend-${layer.id}`;
+            checkbox.checked = layer.visible;
+            checkbox.onchange = () => {
+              const visibility = checkbox.checked ? 'visible' : 'none';
+              map.setLayoutProperty(layer.id, 'visibility', visibility);
+              if (checkbox.checked && data.features.length > 0) {
+                const bbox = turf.bbox(data);
+                if (['Schools', 'Walmart'].includes(layer.id)) {
+                  const newZoom = Math.max(map.getZoom() - 2, 2); // Prevent going below zoom level 2
+                  map.flyTo({ zoom: newZoom });
+                } else if (['Project', 'Wetlands', 'Floodplain', 'FutureLandUse', 'UrbanServiceArea', 'UrbanServiceAreaExpansion'].includes(layer.id)) {
+                  map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 20 });
+                }
+              }
+            };
+
+            const label = document.createElement('label');
+            label.htmlFor = `legend-${layer.id}`;
+            label.innerHTML = `<span style="display:inline-block;width:12px;height:12px;background:${layer.color};margin-right:6px;border:1px solid #333;"></span>${layer.id}`;
+
+            const row = document.createElement('div');
+            row.appendChild(checkbox);
+            row.appendChild(label);
+            document.getElementById('legend-content').appendChild(row);
+
+            // Add popup on click
+            map.on('click', layer.id, (e) => {
+              const props = e.features[0].properties;
+              const html = `<strong>${layer.id}</strong><br>` +
+                Object.entries(props).map(([k, v]) => `<b>${k}</b>: ${v}`).join('<br>');
+              new maplibregl.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(html)
+                .addTo(map);
+            });
+
+            map.on('mouseenter', layer.id, () => {
+              map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', layer.id, () => {
+              map.getCanvas().style.cursor = '';
+            });
+          });
+      });
+    }
+  </script>
 </body>
 </html>
