@@ -1,38 +1,33 @@
 # _config.yml
 
 # Site settings
-title: "GISNerd - Portfolio"
-description: "Projects by the GIS Nerd"
+title: "Pasco Service Visualization"
+description: "A project that visualizes Pasco County data using the ArcGIS API for JavaScript."
+baseurl: "/Pasco_Service_Visualization"  # the subpath of your site, e.g., /Pasco_Service_Visualization
+url: "https://kevinmgis.github.io"       # the base hostname & protocol for your site
 
-# URL settings
-baseurl: ""
-url: "https://kevinmgis.github.io"
-
-# Use the Minimal Mistakes remote theme
-remote_theme: "mmistakes/minimal-mistakes@4.25.0"
-
-# Plugins
-plugins:
-  - jekyll-remote-theme
-
-# Collections: define a 'projects' collection for your portfolio projects
-collections:
-  projects:
-    output: true
-    permalink: /projects/:title/
-
-# Minimal Mistakes theme settings
-theme_settings:
-  # Enable the portfolio layout (if available in your theme version) and configure portfolio options
-  portfolio:
-    enabled: true
-    # You can add further customization options here as needed
-
-# Markdown and syntax highlighting
+# Build settings
 markdown: kramdown
-highlighter: rouge
-
-# Exclude unnecessary files
+theme: minima  # or your chosen theme
 exclude:
+  - README.md
   - Gemfile
   - Gemfile.lock
+
+# Permalinks settings (optional, depending on your needs)
+permalink: pretty
+
+# Defaults for pages
+defaults:
+  -
+    scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+  -
+    scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
